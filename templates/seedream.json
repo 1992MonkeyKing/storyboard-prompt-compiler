@@ -1,1 +1,13 @@
-{"assetLabel":{"image":"图{cn}"},"body":"[{purpose}：]{#each assets}{label}{role}[，保留{keep}][，不取{exclude}]。{/each}{subjectText}[，{action}][，{environment}]。[{shotSize}][，{composition}构图][，{angle}]。[{light}][，{color}][，{material}][，{styleText}]。[画面文字为\"{text.content}\"[，位于{text.position}][，{text.style}]。][{keepText}。]","id":"seedream","kind":"image","lang":"zh","name":"Seedream 4.0–5.0"}
+{
+  "id": "seedream",
+  "name": "Seedream 4.0–5.0",
+  "kind": "image",
+  "lang": "zh",
+  "assetLabel": {
+    "image": "图{cn}"
+  },
+  "phrases": {
+    "listJoin": "，"
+  },
+  "body": "[{purpose}：]{#each assets}{label}{role}[，保留{keep}][，不取{exclude}]。{/each}{subjectText}[，{action}][，{environment}]。[{shotSize}][，{composition}构图][，{angle}]。[{light}][，{color}][，{material}][，{styleText}]。[画面文字为\"{text.content}\"[，位于{text.position}][，{text.style}]。][{keepText}。]"
+}

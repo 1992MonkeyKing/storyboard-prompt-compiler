@@ -12,6 +12,7 @@ import type {
   Asset,
   DialogueLine,
   Move,
+  PlatformPhrases,
   PlatformTemplate,
   Project,
   Shot,
@@ -63,6 +64,8 @@ export function compileWithTemplate(
 type Ctx = Record<string, unknown>;
 
 function buildContext(project: Project, shot: Shot, template: PlatformTemplate): Ctx {
+  const phrases: PlatformPhrases = template.phrases ?? {};
+  const listJoin = phrases.listJoin ?? '';
   const cards = new Map(project.cards.map((c) => [c.id, c]));
   const assetsById = new Map(project.assets.map((a) => [a.id, a]));
 
@@ -74,35 +77,51 @@ function buildContext(project: Project, shot: Shot, template: PlatformTemplate):
     numberOf.set(a.id, counters[a.kind]);
   }
 
+  // 模板没有定义标签格式的素材类型，视为该平台不支持，整句不输出（见 unsupportedAssets）
   const assets = shot.assetIds
     .map((id) => assetsById.get(id))
-    .filter((a): a is Asset => a !== undefined)
+    .filter((a): a is Asset => a !== undefined && template.assetLabel[a.kind] !== undefined)
     .map((a) => {
       const n = numberOf.get(a.id) ?? 0;
-      return { ...a, n, cn: toChineseNumeral(n), label: assetLabel(template, a.kind, n) };
+      return {
+        role: a.role ?? '',
+        keep: a.keep ?? '',
+        exclude: a.exclude ?? '',
+        n,
+        cn: toChineseNumeral(n),
+        label: assetLabel(template, a.kind, n),
+      };
     });
 
-  const subjectText = joinWithComma(cards.get(shot.subjectCard)?.description ?? '', shot.subject);
+  const subjectText = joinWith(cards.get(shot.subjectCard)?.description ?? '', shot.subject, listJoin);
   const styleExtra = (shot as { style?: string }).style ?? '';
-  const styleText = joinWithComma(cards.get(shot.styleCard)?.description ?? '', styleExtra);
+  const styleText = joinWith(cards.get(shot.styleCard)?.description ?? '', styleExtra, listJoin);
 
   let segments: Ctx[] = [];
   let musicText = '';
   let subtitleText = '';
   if (shot.kind === 'video') {
     const v = shot as VideoShot;
-    const total = v.segments.length;
-    segments = v.segments.map((seg, i) => ({
-      ...seg,
-      moveText: buildMoveText(seg.move),
-      dialogueText: dialogueTextForSegment(v.dialogue, i + 1, total),
+    const segs = v.segments ?? [];
+    const total = segs.length;
+    segments = segs.map((seg, i) => ({
+      start: seg.start ?? '',
+      end: seg.end ?? '',
+      shotSize: seg.shotSize ?? '',
+      angle: seg.angle ?? '',
+      action: seg.action ?? '',
+      moveText: buildMoveText(seg.move, phrases),
+      dialogueText: dialogueTextForSegment(v.dialogue ?? [], i + 1, total, phrases),
     }));
-    musicText =
-      v.music === '无' ? '无背景音乐' : v.music ? `背景音乐：${v.music}` : '';
-    subtitleText = v.subtitles === false ? '不要字幕' : '';
+    const music = (v.music ?? '').trim();
+    if (music) {
+      musicText =
+        phrases.musicMap?.[music] ?? renderPhrase(phrases.musicCustom, { value: music });
+    }
+    subtitleText = v.subtitles === false ? (phrases.subtitlesOff ?? '') : (phrases.subtitlesOn ?? '');
   }
 
-  const keepText = shot.keep.join('，');
+  const keepText = (shot.keep ?? []).map((k) => cleanValue(k)).filter(Boolean).join(listJoin);
 
   return {
     ...shot,
@@ -116,17 +135,34 @@ function buildContext(project: Project, shot: Shot, template: PlatformTemplate):
   };
 }
 
-function joinWithComma(base: string, extra: string): string {
-  const b = (base ?? '').trim();
-  const e = (extra ?? '').trim();
-  if (b && e) return `${b}，${e}`;
+/** 渲染 phrases 中的小模板（语法同 body）；未定义时为空串。 */
+function renderPhrase(tpl: string | undefined, fields: Ctx): string {
+  if (!tpl) return '';
+  return renderNodes(parseTemplate(tpl), fields);
+}
+
+/**
+ * 列出某镜头引用、但目标平台模板不支持（未定义标签格式）的素材，供界面做校验提示。
+ */
+export function unsupportedAssets(project: Project, shotId: string, platformId: string): Asset[] {
+  const shot = project.shots.find((s) => s.id === shotId);
+  const template = TEMPLATES[platformId];
+  if (!shot || !template) return [];
+  return shot.assetIds
+    .map((id) => project.assets.find((a) => a.id === id))
+    .filter((a): a is Asset => a !== undefined && template.assetLabel[a.kind] === undefined);
+}
+
+function joinWith(base: string, extra: string, sep: string): string {
+  const b = cleanValue(base);
+  const e = cleanValue(extra);
+  if (b && e) return `${b}${sep}${e}`;
   return b || e;
 }
 
 /** 素材标签：按模板 assetLabel 格式生成，如“图片1”“图一”。 */
 function assetLabel(template: PlatformTemplate, kind: string, n: number): string {
-  const fmt = template.assetLabel[kind];
-  if (!fmt) return `${kind}${n}`; // 模板未定义该类型时的确定性兜底
+  const fmt = template.assetLabel[kind] ?? '';
   return fmt.replace('{n}', String(n)).replace('{cn}', toChineseNumeral(n));
 }
 
@@ -155,38 +191,33 @@ export function toChineseNumeral(n: number): string {
   return String(n);
 }
 
-const AMOUNT_WORD: Record<string, string> = {
-  微: '轻微',
-  小: '小幅',
-  中: '', // “中”不写
-  大: '大幅',
-};
-
 /**
- * 运镜文字组合规则（SPEC.md 第三部分）：
- * 顺序固定为 速度 + 幅度 + 方向 + 类型；类型为“固定”时直接输出“镜头固定”。
+ * 运镜文字（SPEC.md 第三部分）：措辞与顺序全部来自模板 phrases。
+ * 类型命中 moveTypeOverride 时整体替换（如“固定”→“镜头固定”），忽略速度、幅度、方向。
  */
-export function buildMoveText(move?: Move | null): string {
+export function buildMoveText(move: Move | null | undefined, phrases: PlatformPhrases): string {
   if (!move || !move.type) return '';
-  if (move.type === '固定') return '镜头固定';
-  const amountWord = AMOUNT_WORD[move.amount] ?? move.amount ?? '';
-  return `${move.speed ?? ''}${amountWord}${move.direction ?? ''}${move.type}`;
-}
-
-function formatDialogueLine(d: DialogueLine): string {
-  const emotion = d.emotion ? `（${d.emotion}）` : '';
-  return `${d.character}台词${emotion}：“${d.line}”`;
+  const override = phrases.moveTypeOverride?.[move.type];
+  if (override !== undefined) return override;
+  const amount = move.amount ? (phrases.moveAmount?.[move.amount] ?? move.amount) : '';
+  return renderPhrase(phrases.move, {
+    speed: move.speed ?? '',
+    amount,
+    direction: move.direction ?? '',
+    type: move.type,
+  });
 }
 
 /**
  * 某分段的台词文本：segment 字段（从 1 开始）指向对应分段；
  * 未填 segment 的放进最后一段；超出范围的也归入最后一段。
- * 同一段多条台词用“；”连接。
+ * 格式与连接符来自模板 phrases。
  */
 function dialogueTextForSegment(
   dialogue: DialogueLine[],
   index1Based: number,
   total: number,
+  phrases: PlatformPhrases,
 ): string {
   if (total === 0) return '';
   const lines = dialogue.filter((d) => {
@@ -198,7 +229,16 @@ function dialogueTextForSegment(
           : total;
     return target === index1Based;
   });
-  return lines.map(formatDialogueLine).join('；');
+  return lines
+    .map((d) =>
+      renderPhrase(phrases.dialogue, {
+        character: d.character ?? '',
+        emotion: d.emotion ?? '',
+        line: d.line ?? '',
+      }),
+    )
+    .filter(Boolean)
+    .join(phrases.dialogueJoin ?? '');
 }
 
 // ---------------------------------------------------------------------------
@@ -283,7 +323,8 @@ function resolvePath(ctx: Ctx, path: string): unknown {
 function cleanValue(v: unknown): string {
   if (v == null) return '';
   let s = Array.isArray(v) ? v.join('，') : String(v);
-  s = s.trim().replace(/[。，；]+$/, '');
+  // 字段内的换行不得改变行结构：换行压成一个逗号（行只由模板中的 \n 决定）
+  s = s.replace(/\s*[\r\n]+\s*/g, '，').trim().replace(/^[，；]+/, '').replace(/[。，；]+$/, '');
   return s;
 }
 
@@ -298,7 +339,8 @@ function renderNodes(nodes: Node[], ctx: Ctx): string {
       const list = resolvePath(ctx, n.listPath);
       if (Array.isArray(list)) {
         for (const item of list) {
-          out += renderNodes(n.children, { ...ctx, ...(item as Ctx) });
+          // 循环内只读取当前项自身的字段，缺失即为空，不回退到外层同名字段
+          out += renderNodes(n.children, (item ?? {}) as Ctx);
         }
       }
     } else {
@@ -345,7 +387,8 @@ export function normalize(raw: string): string {
       .replace(/，，/g, '，')
       .replace(/，。/g, '。')
       .replace(/。。/g, '。')
-      .replace(/。，/g, '。');
+      .replace(/。，/g, '。')
+      .replace(/([？！])[。，]/g, '$1');
   }
   // 3. 删除每行开头的标点，删除空行
   const lines = s.split('\n').map((line) => {

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { compile, listPlatforms } from '../../lib/compile';
+import { compile, listPlatforms, unsupportedAssets } from '../../lib/compile';
 import type { Project } from '../../lib/types';
 import { diffHighlight, splitSentences } from '../diff';
 
@@ -40,6 +40,7 @@ export default function Preview({ project, shotId, platformId, onPlatformChange 
       error = e instanceof Error ? e.message : String(e);
     }
   }
+  const skipped = shot && !mismatched ? unsupportedAssets(project, shot.id, platformId) : [];
   const { tokens, trailing } = useMemo(
     () => (output === null ? { tokens: [], trailing: '' } : splitSentences(output)),
     [output],
@@ -100,6 +101,11 @@ export default function Preview({ project, shotId, platformId, onPlatformChange 
           ))}
         </select>
       </div>
+      {skipped.length > 0 && (
+        <div className="preview-warning">
+          该平台不支持此类素材，以下素材未写入提示词：{skipped.map((a) => a.file || a.id).join('、')}
+        </div>
+      )}
       <div className="preview-body">{body}</div>
     </div>
   );

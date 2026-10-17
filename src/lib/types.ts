@@ -125,5 +125,34 @@ export interface PlatformTemplate {
   lang: string;
   /** 按素材类型编号的标签格式，{n} 为阿拉伯数字，{cn} 为中文数字 */
   assetLabel: Record<string, string>;
+  /** 派生字段用到的全部措辞（由各平台自定义；代码中不写任何措辞） */
+  phrases: PlatformPhrases;
   body: string;
+}
+
+/**
+ * 平台措辞。所有取值都是数据；缺失的项按空串处理（对应内容不输出）。
+ * 其中带 {字段} 的项是小模板，用与 body 相同的语法渲染。
+ */
+export interface PlatformPhrases {
+  /** 列表连接符，用于 keepText、主体/风格卡片与补充的拼接 */
+  listJoin?: string;
+  /** 运镜文字小模板，可用字段：{speed}{amount}{direction}{type}（amount 已经过 moveAmount 映射） */
+  move?: string;
+  /** 幅度词映射，如 {"小": "小幅", "中": ""} */
+  moveAmount?: Record<string, string>;
+  /** 按运镜类型整体替换，如 {"固定": "镜头固定"}（命中时忽略速度、幅度、方向） */
+  moveTypeOverride?: Record<string, string>;
+  /** 台词小模板，可用字段：{character}{emotion}{line} */
+  dialogue?: string;
+  /** 同一分段多条台词的连接符 */
+  dialogueJoin?: string;
+  /** 音乐取值映射，如 {"无": "无背景音乐"}；未命中时用 musicCustom */
+  musicMap?: Record<string, string>;
+  /** 自定义音乐小模板，可用字段：{value} */
+  musicCustom?: string;
+  /** subtitles 为 false 时输出的文字 */
+  subtitlesOff?: string;
+  /** subtitles 为 true 时输出的文字（通常为空） */
+  subtitlesOn?: string;
 }

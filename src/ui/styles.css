@@ -104,3 +104,4 @@ body {
 .preview-text .sent { border-radius: 3px; transition: background 0.3s; }
 .preview-text .sent.changed { background: #fef08a; box-shadow: 0 0 0 2px #fde047; }
 .preview-error { color: #b91c1c; }
+.preview-warning { margin: 0 16px; padding: 8px 12px; border-radius: 6px; background: #fef3c7; color: #92400e; font-size: 13px; }

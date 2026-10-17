@@ -1,1 +1,33 @@
-{"assetLabel":{"audio":"音频{n}","image":"图片{n}","video":"视频{n}"},"body":"{#each assets}{label}：{role}[；保留{keep}][；不取{exclude}]。\n{/each}[{purpose}：]{subjectText}[，{environment}][，{styleText}][，{light}][，{color}][，{material}]。\n{#each segments}{start}-{end}秒：{shotSize}，{angle}，{moveText}。{action}。[{dialogueText}]\n{/each}[声音：{sfx}。][{musicText}。][{subtitleText}。][{keepText}。]","id":"seedance-2.5","kind":"video","lang":"zh","name":"Seedance 2.5"}
+{
+  "id": "seedance-2.5",
+  "name": "Seedance 2.5",
+  "kind": "video",
+  "lang": "zh",
+  "assetLabel": {
+    "audio": "音频{n}",
+    "image": "图片{n}",
+    "video": "视频{n}"
+  },
+  "phrases": {
+    "listJoin": "，",
+    "move": "{speed}{amount}{direction}{type}",
+    "moveAmount": {
+      "微": "轻微",
+      "小": "小幅",
+      "中": "",
+      "大": "大幅"
+    },
+    "moveTypeOverride": {
+      "固定": "镜头固定"
+    },
+    "dialogue": "{character}台词[（{emotion}）]：“{line}”",
+    "dialogueJoin": "；",
+    "musicMap": {
+      "无": "无背景音乐"
+    },
+    "musicCustom": "背景音乐：{value}",
+    "subtitlesOff": "不要字幕",
+    "subtitlesOn": ""
+  },
+  "body": "{#each assets}{label}：{role}[；保留{keep}][；不取{exclude}]。\n{/each}[{purpose}：]{subjectText}[，{environment}][，{styleText}][，{light}][，{color}][，{material}]。\n{#each segments}{start}-{end}秒：{shotSize}，{angle}，{moveText}。{action}。[{dialogueText}]\n{/each}[声音：{sfx}。][{musicText}。][{subtitleText}。][{keepText}。]"
+}

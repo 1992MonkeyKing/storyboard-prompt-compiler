@@ -102,30 +102,34 @@ Oct 17, 2026 · @Ecol
 
 编译分三步：程序先算出**派生字段**，再把数据填进平台**模板**，最后做**规范化**清理。三步都是确定性的。
 
-### 1. 派生字段（由代码计算）
+### 1. 派生字段（由代码计算，措辞来自模板 `phrases`）
 
-| 派生字段 | 计算方式 |
-| --- | --- |
-| `subjectText` | 主体卡片描述；`subject` 有值时用“，”接在后面 |
-| `styleText` | 风格卡片描述；`style` 有值时用“，”接在后面 |
-| `label` | 素材标签，按模板的 `assetLabel` 格式生成（如“图片1”“图一”） |
-| `moveText` | 按第三部分的运镜组合规则生成 |
-| `dialogueText` | 每条台词写成“{角色}台词（{情绪}）：“{内容}””；情绪为空时省略括号。台词条目可带 `segment`（分段序号，从 1 开始），编译时放进对应分段；未填则放进最后一段 |
-| `musicText` | “无”→“无背景音乐”；其他值 →“背景音乐：{值}”；空值不输出 |
-| `subtitleText` | `subtitles` 为 false →“不要字幕”；为 true 不输出 |
-| `keepText` | `keep` 数组用“，”连接 |
+代码只负责计算逻辑，**所有措辞都写在每个平台模板的 `phrases` 字段里**。新增英文等其他语言的平台时，只写新模板，不改代码。`phrases` 中缺失的项按空串处理。
+
+| 派生字段 | 计算方式 | 用到的 `phrases` |
+| --- | --- | --- |
+| `subjectText` | 主体卡片描述；`subject` 有值时接在后面 | `listJoin` |
+| `styleText` | 风格卡片描述；`style` 有值时接在后面 | `listJoin` |
+| `label` | 素材标签，按模板 `assetLabel` 格式生成（如“图片1”“图一”）。模板未定义该素材类型时，该素材整句不输出，界面提示“该平台不支持此类素材” | — |
+| `moveText` | 类型命中 `moveTypeOverride` 时整体替换；否则幅度经 `moveAmount` 映射后填入 `move` 小模板 | `move`、`moveAmount`、`moveTypeOverride` |
+| `dialogueText` | 每条台词按 `dialogue` 小模板渲染，同一分段多条用 `dialogueJoin` 连接。台词可带 `segment`（从 1 开始）；未填或超出范围放进最后一段 | `dialogue`、`dialogueJoin` |
+| `musicText` | 取值命中 `musicMap` 时用映射结果，否则用 `musicCustom`；空值不输出 | `musicMap`、`musicCustom` |
+| `subtitleText` | `subtitles` 为 false 用 `subtitlesOff`，为 true 用 `subtitlesOn` | `subtitlesOff`、`subtitlesOn` |
+| `keepText` | `keep` 数组逐项清洗后连接 | `listJoin` |
+
+带 `{字段}` 的 `phrases` 项是小模板，语法与 `body` 相同（可用可选块，如 `[（{emotion}）]`）。
 
 ### 2. 模板语法
 
 - `{字段}`：插入字段值。
-- `[ … ]`：可选块。块内任一字段为空，整块省略。可以嵌套。
-- `{#each 列表} … {/each}`：循环，逐项渲染后直接拼接。
-- `\n`：换行。
+- `[ … ]`：可选块。块内本级任一字段为空，整块省略。可以嵌套，嵌套块各自判断。
+- `{#each 列表} … {/each}`：循环，逐项渲染后直接拼接。**循环内只读取当前项自身的字段**，当前项缺失的字段视为空值，不回退到镜头层的同名字段。
+- `\n`：换行。行结构只由模板中的 `\n` 决定。
 
 ### 3. 规范化（按顺序执行）
 
-1. 插入前：去掉字段值首尾空格，以及末尾的“。”“，”“；”。
-2. 插入后：合并重复标点（“，，”→“，”，“，。”→“。”，“。，“→“。”，“。。”→“。”），循环执行直到不再变化。
+1. 插入前：字段值中的换行替换为“，”；去掉首尾空格、开头的“，”“；”，以及末尾的“。”“，”“；”。
+2. 插入后：合并重复标点（“，，”→“，”，“，。”→“。”，“。，”→“。”，“。。”→“。”；“？”“！”后紧跟的“。”“，”删除），循环执行直到不再变化。
 3. 删除每行开头的标点，删除空行。
 
 ### 4. Seedance 2.5 模板（`templates/seedance-2.5.json`）
@@ -136,6 +140,18 @@ Oct 17, 2026 · @Ecol
 {
   "id": "seedance-2.5", "name": "Seedance 2.5", "kind": "video", "lang": "zh",
   "assetLabel": {"image": "图片{n}", "video": "视频{n}", "audio": "音频{n}"},
+  "phrases": {
+    "listJoin": "，",
+    "move": "{speed}{amount}{direction}{type}",
+    "moveAmount": {"微": "轻微", "小": "小幅", "中": "", "大": "大幅"},
+    "moveTypeOverride": {"固定": "镜头固定"},
+    "dialogue": "{character}台词[（{emotion}）]：“{line}”",
+    "dialogueJoin": "；",
+    "musicMap": {"无": "无背景音乐"},
+    "musicCustom": "背景音乐：{value}",
+    "subtitlesOff": "不要字幕",
+    "subtitlesOn": ""
+  },
   "body": "{#each assets}{label}：{role}[；保留{keep}][；不取{exclude}]。\n{/each}[{purpose}：]{subjectText}[，{environment}][，{styleText}][，{light}][，{color}][，{material}]。\n{#each segments}{start}-{end}秒：{shotSize}，{angle}，{moveText}。{action}。[{dialogueText}]\n{/each}[声音：{sfx}。][{musicText}。][{subtitleText}。][{keepText}。]"
 }
 ```
@@ -158,6 +174,7 @@ Oct 17, 2026 · @Ecol
 {
   "id": "seedream", "name": "Seedream 4.0–5.0", "kind": "image", "lang": "zh",
   "assetLabel": {"image": "图{cn}"},
+  "phrases": {"listJoin": "，"},
   "body": "[{purpose}：]{#each assets}{label}{role}[，保留{keep}][，不取{exclude}]。{/each}{subjectText}[，{action}][，{environment}]。[{shotSize}][，{composition}构图][，{angle}]。[{light}][，{color}][，{material}][，{styleText}]。[画面文字为\"{text.content}\"[，位于{text.position}][，{text.style}]。][{keepText}。]"
 }
 ```
