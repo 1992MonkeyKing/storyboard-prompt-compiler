@@ -1,0 +1,1 @@
+{"compilerOptions":{"esModuleInterop":true,"isolatedModules":true,"jsx":"react-jsx","module":"ESNext","moduleResolution":"bundler","noEmit":true,"resolveJsonModule":true,"skipLibCheck":true,"strict":true,"target":"ES2020"},"include":["src","tests","scripts","vite.config.ts"]}
