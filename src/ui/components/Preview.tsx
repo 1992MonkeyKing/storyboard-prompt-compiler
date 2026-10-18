@@ -5,6 +5,9 @@ import type { Project } from '../../lib/types';
 import { diffHighlight, splitSentences } from '../diff';
 import { paramsCopyText, paramsLine } from '../export';
 import { CopyButton } from './controls';
+import { validateShot } from '../validate';
+import { versionsOf } from '../versions';
+import VersionsModal from './VersionsModal';
 
 interface Props {
   project: Project;
@@ -28,6 +31,7 @@ export default function Preview({ project, shotId, platformId, onPlatformChange 
   const baseKey = `${shotId ?? ''}||${platformId}`;
   const prevRef = useRef<{ key: string; output: string } | null>(null);
   const [highlight, setHighlight] = useState<boolean[]>([]);
+  const [versionsOpen, setVersionsOpen] = useState(false);
 
   const shot = shotId ? (project.shots.find((s) => s.id === shotId) ?? null) : null;
   const tpl = platforms.find((p) => p.id === platformId) ?? null;
@@ -42,6 +46,8 @@ export default function Preview({ project, shotId, platformId, onPlatformChange 
       error = e instanceof Error ? e.message : String(e);
     }
   }
+  const hints = shot ? validateShot(project, shot) : [];
+  const versionCount = shot ? versionsOf(project, shot.id).length : 0;
   const skipped = shot && !mismatched ? unsupportedAssets(project, shot.id, platformId) : [];
   const { tokens, trailing } = useMemo(
     () => (output === null ? { tokens: [], trailing: '' } : splitSentences(output)),
@@ -102,6 +108,16 @@ export default function Preview({ project, shotId, platformId, onPlatformChange 
             </option>
           ))}
         </select>
+        {shot && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-small"
+            onClick={() => setVersionsOpen(true)}
+            title="定稿时自动保存版本，可任选两个版本逐句对比"
+          >
+            版本（{versionCount}）
+          </button>
+        )}
         {output !== null && (
           <CopyButton label="复制提示词" getText={() => output} title="复制当前镜头的编译提示词" />
         )}
@@ -117,7 +133,19 @@ export default function Preview({ project, shotId, platformId, onPlatformChange 
           该平台不支持此类素材，以下素材未写入提示词：{skipped.map((a) => a.file || a.id).join('、')}
         </div>
       )}
+      {hints.length > 0 && (
+        <ul className="hint-list">
+          {hints.map((h, i) => (
+            <li key={i} className={`hint hint-${h.level}`}>
+              {h.level === 'warn' ? '⚠' : 'ℹ'} {h.message}
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="preview-body">{body}</div>
+      {versionsOpen && shot && (
+        <VersionsModal project={project} shot={shot} platformId={platformId} onClose={() => setVersionsOpen(false)} />
+      )}
     </div>
   );
 }

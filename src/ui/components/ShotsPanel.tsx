@@ -6,6 +6,8 @@ import { blankShot, moveItem, uid } from '../project';
 interface Props {
   shots: Shot[];
   selectedId: string | null;
+  /** 每个镜头的校验提示数量（阶段 4），0 或缺省不显示角标 */
+  hintCounts?: Record<string, number>;
   onSelect: (id: string) => void;
   onChange: (shots: Shot[]) => void;
 }
@@ -18,7 +20,7 @@ function shotSub(s: Shot): string {
   return '单画面';
 }
 
-export default function ShotsPanel({ shots, selectedId, onSelect, onChange }: Props) {
+export default function ShotsPanel({ shots, selectedId, hintCounts, onSelect, onChange }: Props) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
   const duplicate = (id: string) => {
@@ -106,6 +108,11 @@ export default function ShotsPanel({ shots, selectedId, onSelect, onChange }: Pr
             <div className="item-sub">
               <span className="tag">{s.kind === 'video' ? '视频' : '图像'}</span>{' '}
               <span className="tag">{s.status}</span> <span>{shotSub(s)}</span>
+              {(hintCounts?.[s.id] ?? 0) > 0 && (
+                <span className="tag tag-hint" title="有校验提示，选中镜头后在预览区查看">
+                  ⚠ {hintCounts?.[s.id]}
+                </span>
+              )}
             </div>
           </div>
         ))}

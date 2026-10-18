@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { defaultPlatformId, loadExampleProject, newProject } from './ui/project';
 import { loadSavedProject, saveProject } from './ui/storage';
 import { listPlatforms } from './lib/compile';
@@ -11,6 +11,8 @@ import ShotsPanel from './ui/components/ShotsPanel';
 import ShotEditor from './ui/components/ShotEditor';
 import Preview from './ui/components/Preview';
 import ImportModal from './ui/components/ImportModal';
+import { applyShotEdit, dropVersionsOfMissingShots } from './ui/versions';
+import { hintCounts } from './ui/validate';
 
 export default function App() {
   const [project, setProject] = useState<Project>(() => loadSavedProject() ?? newProject());
@@ -30,6 +32,7 @@ export default function App() {
   }, [project]);
 
   const selectedShot = project.shots.find((s) => s.id === selectedShotId) ?? null;
+  const counts = useMemo(() => hintCounts(project), [project]);
 
   /** 选中镜头时，平台自动切到与镜头类型匹配的模板 */
   const selectShot = (id: string) => {
@@ -135,9 +138,10 @@ export default function App() {
           <ShotsPanel
             shots={project.shots}
             selectedId={selectedShotId}
+            hintCounts={counts}
             onSelect={selectShot}
             onChange={(shots) => {
-              setProject({ ...project, shots });
+              setProject(dropVersionsOfMissingShots({ ...project, shots }));
               if (selectedShotId && !shots.some((s) => s.id === selectedShotId)) {
                 setSelectedShotId(null);
               }
@@ -152,12 +156,7 @@ export default function App() {
                 cards={project.cards}
                 assets={project.assets}
                 platformId={platformId}
-                onChange={(shot) =>
-                  setProject({
-                    ...project,
-                    shots: project.shots.map((s) => (s.id === shot.id ? shot : s)),
-                  })
-                }
+                onChange={(shot) => setProject(applyShotEdit(project, shot, new Date().toISOString()))}
               />
             ) : (
               <div className="empty-hint editor-empty">← 在中间栏选择或新建一个镜头开始编辑</div>

@@ -116,6 +116,24 @@ export interface Project {
   cards: Card[];
   assets: Asset[];
   shots: Shot[];
+  /** 定稿版本快照，按镜头 id 分组（阶段 4）；旧项目文件可以没有此字段 */
+  versions?: Record<string, ShotVersion[]>;
+}
+
+/**
+ * 镜头定稿快照：保存定稿那一刻的镜头数据、它引用的档案卡和素材，
+ * 以及当时按各个同类型平台编译出的提示词全文。
+ */
+export interface ShotVersion {
+  /** 该镜头内的版本序号，从 1 开始 */
+  n: number;
+  /** ISO 时间字符串（仅用于显示，不参与编译） */
+  savedAt: string;
+  shot: Shot;
+  cards: Card[];
+  assets: Asset[];
+  /** 平台 id → 当时的编译结果 */
+  prompts: Record<string, string>;
 }
 
 export interface PlatformTemplate {
