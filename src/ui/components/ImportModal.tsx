@@ -80,12 +80,13 @@ export default function ImportModal({ project, onClose, onImport }: Props) {
     });
   };
 
-  const adoptWarning = (idx: number) => {
+  const adoptWarning = (idx: number, value: string) => {
+    if (!value) return;
     setReview((prev) => {
       if (!prev || prev.adopted[idx]) return prev;
       const rawShots = JSON.parse(JSON.stringify(prev.rawShots)) as Record<string, unknown>[];
       const w = prev.warnings[idx];
-      setPath(rawShots[w.shotIndex], w.path, w.suggestion);
+      setPath(rawShots[w.shotIndex], w.path, value);
       const adopted = prev.adopted.slice();
       adopted[idx] = true;
       return { ...prev, rawShots, adopted };
@@ -193,17 +194,36 @@ export default function ImportModal({ project, onClose, onImport }: Props) {
                             <span className="warn-shot">{w.shotId}</span>
                             <span className="warn-field">{w.fieldLabel}</span>：
                             <span className="vocab-bad">{w.value}</span>
-                            <span className="warn-suggest">→ 建议：{w.suggestion}</span>
                             {review.adopted[i] ? (
-                              <span className="warn-done">已采用 ✓</span>
+                              <span className="warn-done">已修正 ✓</span>
                             ) : (
-                              <button
-                                type="button"
-                                className="btn btn-small"
-                                onClick={() => adoptWarning(i)}
-                              >
-                                采用建议
-                              </button>
+                              <>
+                                {w.suggestion && (
+                                  <>
+                                    <span className="warn-suggest">→ 建议：{w.suggestion}</span>
+                                    <button
+                                      type="button"
+                                      className="btn btn-small"
+                                      onClick={() => adoptWarning(i, w.suggestion)}
+                                    >
+                                      采用建议
+                                    </button>
+                                  </>
+                                )}
+                                <select
+                                  className="warn-select"
+                                  value=""
+                                  aria-label={`为 ${w.fieldLabel} 选择合法取值`}
+                                  onChange={(e) => adoptWarning(i, e.target.value)}
+                                >
+                                  <option value="">{w.suggestion ? '或自选…' : '请选择…'}</option>
+                                  {w.options.map((o) => (
+                                    <option key={o} value={o}>
+                                      {o}
+                                    </option>
+                                  ))}
+                                </select>
+                              </>
                             )}
                           </li>
                         ))}

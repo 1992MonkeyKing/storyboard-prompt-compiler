@@ -1,10 +1,10 @@
 // 阶段 3 单元测试：拆解提示词组装、导入校验、词表检查、导出构建。
+import { vocabField } from '../src/ui/vocab';
 import { describe, expect, it } from 'vitest';
 import { buildBreakdownPrompt } from '../src/ui/breakdown';
 import {
   checkVocabValues,
-  findClosestOption,
-  levenshtein,
+  aliasSuggestion,
   normalizeCard,
   normalizeShot,
   resolveCardConflicts,
@@ -60,16 +60,6 @@ describe('validateImport', () => {
   });
 });
 
-describe('levenshtein / findClosestOption', () => {
-  it('编辑距离正确', () => {
-    expect(levenshtein('中近', '中近景')).toBe(1);
-    expect(levenshtein('abc', 'abc')).toBe(0);
-  });
-  it('超大远景 → 大远景', () => {
-    expect(findClosestOption('超大远景', ['大远景', '远景', '中近景'])).toBe('大远景');
-  });
-});
-
 describe('checkVocabValues', () => {
   it('标红词表外取值并给出建议；空值与可自填字段不标', () => {
     const shots = [
@@ -90,7 +80,8 @@ describe('checkVocabValues', () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0].fieldLabel).toBe('第1段·景别');
     expect(warnings[0].value).toBe('超大远景');
-    expect(warnings[0].suggestion).toBe('大远景');
+    expect(warnings[0].suggestion).toBe(''); // “超大远景”不在别名表中，不猜测
+    expect(warnings[0].options).toContain('大远景'); // 提供全部合法选项供自选
   });
 });
 
@@ -179,5 +170,37 @@ describe('buildTxt / buildCsv', () => {
     expect(csv).toContain('S01');
     expect(csv).toContain('S02');
     expect(csv).toContain('"'); // 含换行的提示词字段被引号包裹
+  });
+});
+
+describe('别名建议（不做字符相似度猜测）', () => {
+  const field = (path: Parameters<typeof vocabField>[0]) => vocabField(path);
+  const cases: [Parameters<typeof vocabField>[0], string, string][] = [
+    ['shotSize', '半身', '中景'],
+    ['shotSize', '全身', '全景'],
+    ['shotSize', '大头', '特写'],
+    ['shotSize', 'close-up', '特写'],
+    ['shotSize', 'Close-Up', '特写'],
+    ['shotSize', '近景特写', '近景'],
+    ['move.type', '推镜头', '前推'],
+    ['move.type', '拉远', '后拉'],
+    ['move.speed', '慢', '缓慢'],
+  ];
+  for (const [path, input, expected] of cases) {
+    it(`${input} → ${expected}`, () => {
+      expect(aliasSuggestion(input, field(path))).toBe(expected);
+    });
+  }
+  it('未登记的词不给建议', () => {
+    expect(aliasSuggestion('奇怪镜头', field('shotSize'))).toBe('');
+    expect(aliasSuggestion('慢动作感', field('move.speed'))).toBe('');
+    expect(aliasSuggestion('慢', field('move.type'))).toBe(''); // 别名按字段区分
+  });
+  it('所有别名都指向本字段的合法选项', () => {
+    const paths = ['shotSize', 'angle', 'move.type', 'move.amount', 'move.speed', 'move.direction'] as const;
+    for (const p of paths) {
+      const f = field(p);
+      for (const target of Object.values(f.aliases ?? {})) expect(f.options).toContain(target);
+    }
   });
 });

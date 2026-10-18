@@ -152,6 +152,7 @@ body {
 .warn-field { color: #6b7280; }
 .vocab-bad { color: #b91c1c; background: #fef2f2; padding: 1px 6px; border-radius: 4px; font-weight: 700; }
 .warn-suggest { color: #166534; }
+.warn-select { font-size: 13px; padding: 2px 6px; }
 .warn-done { color: #166534; font-weight: 700; }
 .conflict-row {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;

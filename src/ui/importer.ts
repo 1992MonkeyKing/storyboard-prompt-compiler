@@ -1,7 +1,7 @@
 // JSON 导入：结构校验、词表检查、卡片冲突处理。纯函数，无提示词措辞。
 import type { Card, DialogueLine, Segment, Shot } from '../lib/types';
 import { blankCard, blankDialogue, blankSegment, blankShot, uid } from './project';
-import { vocabField, type VocabPath } from './vocab';
+import { vocabField, type VocabField, type VocabPath } from './vocab';
 
 export type FieldPath = (string | number)[];
 
@@ -19,7 +19,10 @@ export interface VocabWarning {
   /** 在 shots 数组中的路径，如 ['segments', 0, 'shotSize'] */
   path: FieldPath;
   value: string;
+  /** 命中别名时的建议值；未命中为空串（不给建议） */
   suggestion: string;
+  /** 该字段的全部合法选项，供用户在下拉框中自选 */
+  options: string[];
 }
 
 export interface ValidatedImport {
@@ -86,35 +89,17 @@ export function validateImport(text: string): {
   return { data: { cards, shots, questions }, issues: [] };
 }
 
-/** 字符级编辑距离（用于“最接近的合法选项”）。 */
-export function levenshtein(a: string, b: string): number {
-  const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
-    new Array<number>(b.length + 1).fill(0).map((_, j) => (i === 0 ? j : j === 0 ? i : 0)),
-  );
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,
-        dp[i][j - 1] + 1,
-        dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
-    }
-  }
-  return dp[a.length][b.length];
-}
-
-/** 在合法选项中找与 value 最接近的一个（距离最小，相同取前者）。 */
-export function findClosestOption(value: string, options: string[]): string {
-  let best = options[0] ?? value;
-  let bestDist = Infinity;
-  for (const o of options) {
-    const d = levenshtein(value, o);
-    if (d < bestDist) {
-      bestDist = d;
-      best = o;
-    }
-  }
-  return best;
+/**
+ * 查别名表给出建议：只有命中别名（忽略首尾空格与英文大小写）才返回合法选项；
+ * 未命中返回空串，界面只标红并让用户从下拉框自选，不做猜测。
+ */
+export function aliasSuggestion(value: string, field: VocabField): string {
+  const aliases = field.aliases ?? {};
+  const key = value.trim();
+  const hit = aliases[key] ?? Object.entries(aliases).find(
+    ([k]) => k.toLowerCase() === key.toLowerCase(),
+  )?.[1];
+  return hit !== undefined && field.options.includes(hit) ? hit : '';
 }
 
 interface VocabSlot {
@@ -126,14 +111,18 @@ function checkSlot(
   value: unknown,
   slot: VocabSlot,
   warnings: VocabWarning[],
-  warn: Omit<VocabWarning, 'value' | 'suggestion'>,
+  warn: Omit<VocabWarning, 'value' | 'suggestion' | 'options'>,
 ): void {
   if (typeof value !== 'string' || value === '') return; // 空值不标红
   const field = vocabField(slot.vocabPath);
   if (field.allowCustom) return; // 可自填字段不校验
   if (field.options.includes(value)) return;
-  const candidates = field.options.filter((o) => o !== '');
-  warnings.push({ ...warn, value, suggestion: findClosestOption(value, candidates) });
+  warnings.push({
+    ...warn,
+    value,
+    suggestion: aliasSuggestion(value, field),
+    options: field.options.filter((o) => o !== ''),
+  });
 }
 
 /** 检查导入镜头中受控词表字段的取值；返回词表外取值告警。 */
@@ -143,7 +132,10 @@ export function checkVocabValues(shots: unknown[]): VocabWarning[] {
     const sh = raw as Record<string, unknown>;
     if (!sh || typeof sh !== 'object') return;
     const shotId = typeof sh.id === 'string' ? sh.id : `shots[${i}]`;
-    const base = { shotIndex: i, shotId } as Omit<VocabWarning, 'value' | 'suggestion' | 'fieldLabel' | 'path'>;
+    const base = { shotIndex: i, shotId } as Omit<
+      VocabWarning,
+      'value' | 'suggestion' | 'options' | 'fieldLabel' | 'path'
+    >;
     if (sh.kind === 'video') {
       const segments = Array.isArray(sh.segments) ? sh.segments : [];
       segments.forEach((seg: unknown, j: number) => {

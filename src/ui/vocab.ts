@@ -6,6 +6,8 @@ export interface VocabField {
   label: string;
   options: string[];
   allowCustom: boolean;
+  /** 别名表：常见非标准写法 → 合法选项。只有命中别名才给出建议。 */
+  aliases?: Record<string, string>;
 }
 
 interface VocabRoot {
