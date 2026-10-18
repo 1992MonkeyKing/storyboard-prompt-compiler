@@ -1,5 +1,7 @@
 // 表单基础控件。镜头语言下拉框（VocabSelect）的选项全部来自词表字段对象，
 // 本文件不写死任何选项文字。
+import { useState } from 'react';
+import { copyText } from '../export';
 import type { VocabField } from '../vocab';
 
 interface FieldProps {
@@ -147,6 +149,32 @@ export function AppSelect(props: {
         ))}
       </select>
     </Field>
+  );
+}
+
+/** 复制按钮：点击复制 getText() 的文本，成功后短暂显示“已复制”。 */
+export function CopyButton(props: { label: string; getText: () => string; title?: string }) {
+  const [done, setDone] = useState(false);
+  const [failed, setFailed] = useState(false);
+  return (
+    <button
+      type="button"
+      className="btn btn-small"
+      title={props.title}
+      onClick={async () => {
+        const ok = await copyText(props.getText());
+        if (ok) {
+          setDone(true);
+          setFailed(false);
+          window.setTimeout(() => setDone(false), 1500);
+        } else {
+          setFailed(true);
+          window.setTimeout(() => setFailed(false), 2000);
+        }
+      }}
+    >
+      {failed ? '复制失败' : done ? '已复制 ✓' : props.label}
+    </button>
   );
 }
 

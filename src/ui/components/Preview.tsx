@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import { compile, listPlatforms, unsupportedAssets } from '../../lib/compile';
 import type { Project } from '../../lib/types';
 import { diffHighlight, splitSentences } from '../diff';
+import { paramsCopyText, paramsLine } from '../export';
+import { CopyButton } from './controls';
 
 interface Props {
   project: Project;
@@ -100,7 +102,16 @@ export default function Preview({ project, shotId, platformId, onPlatformChange 
             </option>
           ))}
         </select>
+        {output !== null && (
+          <CopyButton label="复制提示词" getText={() => output} title="复制当前镜头的编译提示词" />
+        )}
       </div>
+      {shot && output !== null && (
+        <div className="preview-params">
+          <span className="params-text">参数：{paramsLine(shot)}</span>
+          <CopyButton label="复制参数" getText={() => paramsCopyText(shot)} title="复制比例 / 分辨率 / 种子" />
+        </div>
+      )}
       {skipped.length > 0 && (
         <div className="preview-warning">
           该平台不支持此类素材，以下素材未写入提示词：{skipped.map((a) => a.file || a.id).join('、')}
