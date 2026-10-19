@@ -10,6 +10,8 @@ const PLACEHOLDERS: Record<string, VocabPath> = {
   幅度选项: 'move.amount',
   速度选项: 'move.speed',
   方向选项: 'move.direction',
+  播放速度选项: 'playback',
+  景深选项: 'focus',
 };
 
 /** 生成完整的剧本拆解提示词（复制后贴进任意 LLM）。 */

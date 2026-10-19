@@ -260,7 +260,29 @@ function VideoFields({ shot, onChange }: { shot: VideoShot; onChange: (s: VideoS
             <VocabSelect label="速度" field={vocabField('move.speed')} value={seg.move.speed} onChange={(v) => updateSegment(i, { ...seg, move: { ...seg.move, speed: v } })} />
             <VocabSelect label="方向" field={vocabField('move.direction')} value={seg.move.direction} onChange={(v) => updateSegment(i, { ...seg, move: { ...seg.move, direction: v } })} />
           </div>
+          <div className="form-grid-2">
+            <VocabSelect label="景深/焦点" field={vocabField('focus')} value={seg.focus ?? ''} onChange={(v) => updateSegment(i, { ...seg, focus: v })} />
+            <VocabSelect label="播放速度" field={vocabField('playback')} value={seg.playback ?? ''} onChange={(v) => updateSegment(i, { ...seg, playback: v })} />
+          </div>
           <TextArea label="动作" value={seg.action} onChange={(v) => updateSegment(i, { ...seg, action: v })} />
+          <TextInput label="本段音效" value={seg.sfx ?? ''} placeholder="只写这一段发生的声音" onChange={(v) => updateSegment(i, { ...seg, sfx: v })} />
+          <div className="form-grid-3">
+            <TextInput
+              label="画面文字（逐字）"
+              value={seg.text?.content ?? ''}
+              onChange={(v) => updateSegment(i, { ...seg, text: { position: '', style: '', ...(seg.text ?? {}), content: v } })}
+            />
+            <TextInput
+              label="文字位置"
+              value={seg.text?.position ?? ''}
+              onChange={(v) => updateSegment(i, { ...seg, text: { content: '', style: '', ...(seg.text ?? {}), position: v } })}
+            />
+            <TextInput
+              label="文字风格"
+              value={seg.text?.style ?? ''}
+              onChange={(v) => updateSegment(i, { ...seg, text: { content: '', position: '', ...(seg.text ?? {}), style: v } })}
+            />
+          </div>
         </div>
       ))}
 
@@ -289,10 +311,10 @@ function VideoFields({ shot, onChange }: { shot: VideoShot; onChange: (s: VideoS
         </div>
       ))}
 
-      <TextArea label="音效" value={shot.sfx} onChange={(v) => set({ sfx: v })} />
+      <TextArea label="整条镜头的环境声" value={shot.sfx} onChange={(v) => set({ sfx: v })} />
       <div className="form-grid-2">
         <VocabSelect label="音乐" field={vocabField('music')} value={shot.music} onChange={(v) => set({ music: v })} />
-        <CheckBox label="需要字幕" checked={shot.subtitles} onChange={(v) => set({ subtitles: v })} />
+        <CheckBox label="需要对白字幕" checked={shot.subtitles} onChange={(v) => set({ subtitles: v })} />
       </div>
     </div>
   );

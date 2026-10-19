@@ -55,6 +55,10 @@ export function blankSegment(): Segment {
     angle: '',
     move: { type: '', amount: '', speed: '', direction: '' },
     action: '',
+    focus: '',
+    playback: '',
+    sfx: '',
+    text: null,
   };
 }
 

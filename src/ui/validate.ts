@@ -2,6 +2,7 @@
 // 提示文案属于界面文案，不是提示词措辞；编译输出只用于检查重复短语。
 import { compile, listPlatforms } from '../lib/compile';
 import type { Project, Shot, VideoShot } from '../lib/types';
+import vocabJson from '../../vocab/zh.json';
 
 export type HintLevel = 'warn' | 'info';
 
@@ -37,6 +38,24 @@ function checkRequired(project: Project, shot: Shot, hints: Hint[]): void {
   if (!cardDesc.trim() && !shot.subject.trim()) {
     hints.push({ level: 'warn', message: '主体为空：请选择主体档案卡或填写主体补充' });
   }
+  const ratio = shot.params?.ratio;
+  if (typeof ratio !== 'string' || !ratio.trim()) {
+    hints.push({ level: 'info', message: '未设置画幅比例（参数不进提示词，但生成时要在平台里选）' });
+  }
+}
+
+/** 动作里提到“字幕/文字/字样”等，但该分段没有填写画面文字内容。 */
+const TEXT_MENTION = /字幕|文字|字样|标语|书法字|标题/;
+
+function checkTextMentions(shot: VideoShot, hints: Hint[]): void {
+  shot.segments.forEach((seg, i) => {
+    if (TEXT_MENTION.test(seg.action ?? '') && !(seg.text?.content ?? '').trim()) {
+      hints.push({
+        level: 'warn',
+        message: `第${i + 1}段动作里提到了文字/字幕，但没有填写“画面文字”内容，模型可能乱写字或不出字`,
+      });
+    }
+  });
 }
 
 function checkTimeline(shot: VideoShot, hints: Hint[]): void {
@@ -98,6 +117,19 @@ function checkTimeline(shot: VideoShot, hints: Hint[]): void {
   });
 }
 
+/** 词表里的标准取值（景别、景深等）在不同分段重复出现是正常的，不算重复内容。 */
+function collectOptions(node: unknown, out: Set<string>): Set<string> {
+  if (node && typeof node === 'object') {
+    const n = node as Record<string, unknown>;
+    if (Array.isArray(n.options)) for (const o of n.options) if (typeof o === 'string') out.add(o);
+    for (const [k, v] of Object.entries(n)) if (k !== 'options' && k !== 'aliases') collectOptions(v, out);
+  }
+  return out;
+}
+const VOCAB_VALUES = collectOptions(vocabJson, new Set<string>());
+
+const TIMESTAMP = /^[\d.]+\s*[-–~至]\s*[\d.]+\s*秒$/;
+
 function countOccurrences(text: string, p: string): number {
   let n = 0;
   for (let i = text.indexOf(p); i !== -1; i = text.indexOf(p, i + p.length)) n++;
@@ -113,7 +145,8 @@ export function repeatedPhrases(text: string): string[] {
   const phrases = new Set<string>();
   for (const raw of text.split(/[。，；！？：:\n]/)) {
     const p = raw.trim();
-    if (p.length >= MIN_REPEAT_LEN) phrases.add(p);
+    // 纯时间戳（如“0-3秒”）是时间轴结构的一部分，不算重复内容
+    if (p.length >= MIN_REPEAT_LEN && !TIMESTAMP.test(p) && !VOCAB_VALUES.has(p)) phrases.add(p);
   }
   const repeated = [...phrases].filter((p) => countOccurrences(text, p) > 1);
   return repeated.filter((p) => !repeated.some((q) => q !== p && q.includes(p)));
@@ -145,7 +178,10 @@ export function validateShot(project: Project, shot: Shot): Hint[] {
   const hints: Hint[] = [];
   checkReferences(project, shot, hints);
   checkRequired(project, shot, hints);
-  if (shot.kind === 'video') checkTimeline(shot as VideoShot, hints);
+  if (shot.kind === 'video') {
+    checkTimeline(shot as VideoShot, hints);
+    checkTextMentions(shot as VideoShot, hints);
+  }
   checkRepeats(project, shot, hints);
   return hints;
 }

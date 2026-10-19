@@ -1,0 +1,45 @@
+{
+  "cards": [
+    {"id": "egg", "type": "产品", "name": "国风礼盒茶叶蛋", "description": "圆润饱满的完整茶叶蛋，蛋壳布满均匀自然的深褐色卤纹，纹理清晰立体、层次细腻"},
+    {"id": "guofeng", "type": "风格", "name": "中式极简国风", "description": "中式极简构图，低饱和莫兰迪茶色系，暖调柔光自上而下漫射，无硬阴影，电影级微距质感"}
+  ],
+  "shots": [
+    {
+      "id": "S01", "kind": "video", "label": "茶叶蛋 10 秒信息流", "purpose": "高端国风礼盒茶叶蛋短视频广告",
+      "duration": 10,
+      "subjectCard": "egg", "subject": "",
+      "environment": "",
+      "styleCard": "guofeng",
+      "segments": [
+        {"start": 0, "end": 3, "shotSize": "大特写", "angle": "俯视",
+         "move": {"type": "前推", "amount": "微", "speed": "缓慢", "direction": ""},
+         "action": "复古粗陶卤锅中盛着透亮的深红褐色卤汤，多枚茶叶蛋完整浸泡其中，液面漂浮老茶叶、桂皮、八角，卤汤缓慢涌动，泛起细碎涟漪",
+         "focus": "", "playback": "升格慢动作", "sfx": "轻柔的卤汤咕嘟微沸声", "text": {"content": "", "position": "", "style": ""}},
+        {"start": 3, "end": 7, "shotSize": "特写", "angle": "平视",
+         "move": {"type": "跟拍", "amount": "小", "speed": "缓慢", "direction": "向上"},
+         "action": "原木色筷子从卤汤中夹起一枚茶叶蛋，浓稠透亮的卤汁顺着蛋身缓缓流下并滴落",
+         "focus": "浅景深背景虚化", "playback": "", "sfx": "清脆细微的卤汁滴落声", "text": {"content": "", "position": "", "style": ""}},
+        {"start": 7, "end": 10, "shotSize": "中近景", "angle": "平视",
+         "move": {"type": "固定", "amount": "", "speed": "", "direction": ""},
+         "action": "茶叶蛋被轻放进哑光青瓷浅碟，瓷碟素白泛青，虚化的背景里隐约露出国风礼盒的边角纹理",
+         "focus": "浅景深背景虚化", "playback": "", "sfx": "瓷碟轻放的清脆触碰声",
+         "text": {"content": "古法慢卤 · 礼盒即食", "position": "", "style": "极简淡金色国风书法字，无花哨特效"}}
+      ],
+      "dialogue": [
+        {"character": "旁白", "emotion": "温润低沉，语速偏慢", "line": "慢卤凝香", "segment": 1},
+        {"character": "旁白", "emotion": "平稳温润", "line": "一枚入味茶蛋", "segment": 2},
+        {"character": "旁白", "emotion": "沉稳，余韵悠长", "line": "礼藏本味", "segment": 3}
+      ],
+      "sfx": "",
+      "music": "空灵国风背景音，结尾渐弱",
+      "subtitles": false,
+      "keep": ["茶叶蛋形态完整圆润，蛋壳完好", "镜头运动舒缓平稳", "画面干净极简，只有卤锅、茶叶蛋、筷子、瓷碟和礼盒"],
+      "params": {"ratio": "9:16"}
+    }
+  ],
+  "questions": [
+    "画面文字“古法慢卤 · 礼盒即食”放在画面什么位置？",
+    "是否有茶叶蛋、卤锅、礼盒的产品参考图？",
+    "原脚本按 3 个镜头写，是否接受合成一个 10 秒连续镜头生成？"
+  ]
+}

@@ -21,6 +21,8 @@ interface VocabRoot {
   };
   composition: VocabField;
   light: VocabField;
+  focus: VocabField;
+  playback: VocabField;
   music: VocabField;
 }
 
@@ -32,6 +34,8 @@ export type VocabPath =
   | 'composition'
   | 'light'
   | 'music'
+  | 'focus'
+  | 'playback'
   | 'move.type'
   | 'move.amount'
   | 'move.speed'

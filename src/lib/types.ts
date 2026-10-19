@@ -38,6 +38,14 @@ export interface Segment {
   angle: string;
   move: Move;
   action: string;
+  /** 景深 / 焦点（词表 focus，可自填） */
+  focus?: string;
+  /** 播放速度（词表 playback，如 升格慢动作） */
+  playback?: string;
+  /** 本分段的音效（与时间轴同步） */
+  sfx?: string;
+  /** 本分段出现的画面文字（广告语、标题等，逐字保留） */
+  text?: ShotText | null;
 }
 
 export interface DialogueLine {
@@ -173,4 +181,10 @@ export interface PlatformPhrases {
   subtitlesOff?: string;
   /** subtitles 为 true 时输出的文字（通常为空） */
   subtitlesOn?: string;
+  /** subtitles 为 false 但分段里有画面文字时输出的文字（避免与画面文字矛盾）；未定义时用 subtitlesOff */
+  subtitlesOffWithText?: string;
+  /** 视为画外音的角色名，如 ["旁白", "画外音"]；命中时台词改用 narration 小模板 */
+  narratorNames?: string[];
+  /** 旁白小模板，可用字段：{character}{emotion}{line}；未定义时仍用 dialogue */
+  narration?: string;
 }

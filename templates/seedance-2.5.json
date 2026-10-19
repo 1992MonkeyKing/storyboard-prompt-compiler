@@ -27,7 +27,14 @@
     },
     "musicCustom": "背景音乐：{value}",
     "subtitlesOff": "不要字幕",
-    "subtitlesOn": ""
+    "subtitlesOn": "",
+    "subtitlesOffWithText": "除指定画面文字外不要其他字幕",
+    "narratorNames": [
+      "旁白",
+      "画外音",
+      "VO"
+    ],
+    "narration": "{character}[（{emotion}）]：“{line}”"
   },
-  "body": "{#each assets}{label}：{role}[；保留{keep}][；不取{exclude}]。\n{/each}[{purpose}：]{subjectText}[，{environment}][，{styleText}][，{light}][，{color}][，{material}]。\n{#each segments}{start}-{end}秒：{shotSize}，{angle}，{moveText}。{action}。[{dialogueText}]\n{/each}[声音：{sfx}。][{musicText}。][{subtitleText}。][{keepText}。]"
+  "body": "{#each assets}{label}：{role}[；保留{keep}][；不取{exclude}]。\n{/each}[{purpose}：]{subjectText}[，{environment}][，{styleText}][，{light}][，{color}][，{material}]。\n{#each segments}{start}-{end}秒：{shotSize}，{angle}，{moveText}[，{focus}][，{playback}]。{action}。[画面出现文字“{textContent}”[，位于{textPosition}][，{textStyle}]。][音效：{sfx}。][{dialogueText}]\n{/each}[声音：{sfx}。][{musicText}。][{subtitleText}。][{keepText}。]"
 }

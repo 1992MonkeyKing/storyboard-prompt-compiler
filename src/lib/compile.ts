@@ -111,6 +111,12 @@ function buildContext(project: Project, shot: Shot, template: PlatformTemplate):
       angle: seg.angle ?? '',
       action: seg.action ?? '',
       moveText: buildMoveText(seg.move, phrases),
+      focus: seg.focus ?? '',
+      playback: seg.playback ?? '',
+      sfx: seg.sfx ?? '',
+      textContent: seg.text?.content ?? '',
+      textPosition: seg.text?.position ?? '',
+      textStyle: seg.text?.style ?? '',
       dialogueText: dialogueTextForSegment(v.dialogue ?? [], i + 1, total, phrases),
     }));
     const music = (v.music ?? '').trim();
@@ -118,7 +124,13 @@ function buildContext(project: Project, shot: Shot, template: PlatformTemplate):
       musicText =
         phrases.musicMap?.[music] ?? renderPhrase(phrases.musicCustom, { value: music });
     }
-    subtitleText = v.subtitles === false ? (phrases.subtitlesOff ?? '') : (phrases.subtitlesOn ?? '');
+    // 分段里写了画面文字时，“不要字幕”会与之矛盾：改用 subtitlesOffWithText（措辞在模板里）
+    const hasText = segs.some((seg) => cleanValue(seg.text?.content) !== '');
+    const offText =
+      hasText && phrases.subtitlesOffWithText !== undefined
+        ? phrases.subtitlesOffWithText
+        : (phrases.subtitlesOff ?? '');
+    subtitleText = v.subtitles === false ? offText : (phrases.subtitlesOn ?? '');
   }
 
   const keepText = (shot.keep ?? []).map((k) => cleanValue(k)).filter(Boolean).join(listJoin);
@@ -229,13 +241,19 @@ function dialogueTextForSegment(
           : total;
     return target === index1Based;
   });
+  const narrators = new Set((phrases.narratorNames ?? []).map((n) => n.trim()));
   return lines
     .map((d) =>
-      renderPhrase(phrases.dialogue, {
+      renderPhrase(
+        narrators.has((d.character ?? '').trim()) && phrases.narration !== undefined
+          ? phrases.narration
+          : phrases.dialogue,
+        {
         character: d.character ?? '',
         emotion: d.emotion ?? '',
         line: d.line ?? '',
-      }),
+        },
+      ),
     )
     .filter(Boolean)
     .join(phrases.dialogueJoin ?? '');

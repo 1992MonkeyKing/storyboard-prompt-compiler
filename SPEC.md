@@ -69,7 +69,9 @@ Oct 17, 2026 · @Ecol
 - **卡片引用**：`subjectCard` 有值时，主体取卡片的 `description`；`subject` 填写的内容作为补充，接在卡片描述之后。`styleCard` 同理。修改卡片描述后，所有引用它的镜头自动更新。
 - **素材编号**：素材在项目中按类型分别计数（图片、视频、音频各自从 1 开始），顺序即上传顺序。编号由程序生成，各平台的标签写法由模板决定（Seedance 写“图片1”，Seedream 写“图一”）。
 - **镜头类型**：`kind` 为 `video` 时使用 `segments`、`dialogue`、`sfx`、`music`、`subtitles`；为 `image` 时改用 `shotSize`、`composition`、`angle`、`action`、`text` 等单画面字段（见下）。
-- **台词**：`{"character": "林秀兰", "emotion": "惊讶", "line": "是你？"}`，内容逐字保留。
+- **台词**：`{"character": "林秀兰", "emotion": "惊讶", "line": "是你？"}`，内容逐字保留。角色名在模板 `narratorNames` 里（如“旁白”）时按画外音措辞输出，不写成“某某台词”。
+- **分段的可选字段**（实测修复后新增，空值不留痕迹）：`focus` 景深/焦点（词表 `focus`，可自填）、`playback` 播放速度（词表 `playback`：升格慢动作、延时快动作）、`sfx` 本段音效（与时间轴同步；镜头级 `sfx` 只放贯穿整条镜头的环境声）、`text` 本段画面文字（`content` 逐字保留、`position`、`style`）。
+- **字幕与画面文字**：`subtitles` 只管对白字幕。任一分段有画面文字且 `subtitles` 为 false 时，结尾改用模板的 `subtitlesOffWithText`（“除指定画面文字外不要其他字幕”），避免与画面文字矛盾。
 - **状态**：`草稿 / 待审 / 定稿`；定稿时保存版本快照。
 
 **图像镜头的单画面字段**：`purpose`、`subjectCard`/`subject`、`action`、`environment`、`shotSize`、`composition`、`angle`、`light`、`color`、`material`、`styleCard`/`style`、`text`（`content`、`position`、`style`）、`assetIds`、`keep`、`params`。
@@ -138,21 +140,44 @@ Oct 17, 2026 · @Ecol
 
 ```json
 {
-  "id": "seedance-2.5", "name": "Seedance 2.5", "kind": "video", "lang": "zh",
-  "assetLabel": {"image": "图片{n}", "video": "视频{n}", "audio": "音频{n}"},
+  "id": "seedance-2.5",
+  "name": "Seedance 2.5",
+  "kind": "video",
+  "lang": "zh",
+  "assetLabel": {
+    "audio": "音频{n}",
+    "image": "图片{n}",
+    "video": "视频{n}"
+  },
   "phrases": {
     "listJoin": "，",
     "move": "{speed}{amount}{direction}{type}",
-    "moveAmount": {"微": "轻微", "小": "小幅", "中": "", "大": "大幅"},
-    "moveTypeOverride": {"固定": "镜头固定"},
+    "moveAmount": {
+      "微": "轻微",
+      "小": "小幅",
+      "中": "",
+      "大": "大幅"
+    },
+    "moveTypeOverride": {
+      "固定": "镜头固定"
+    },
     "dialogue": "{character}台词[（{emotion}）]：“{line}”",
     "dialogueJoin": "；",
-    "musicMap": {"无": "无背景音乐"},
+    "musicMap": {
+      "无": "无背景音乐"
+    },
     "musicCustom": "背景音乐：{value}",
     "subtitlesOff": "不要字幕",
-    "subtitlesOn": ""
+    "subtitlesOn": "",
+    "subtitlesOffWithText": "除指定画面文字外不要其他字幕",
+    "narratorNames": [
+      "旁白",
+      "画外音",
+      "VO"
+    ],
+    "narration": "{character}[（{emotion}）]：“{line}”"
   },
-  "body": "{#each assets}{label}：{role}[；保留{keep}][；不取{exclude}]。\n{/each}[{purpose}：]{subjectText}[，{environment}][，{styleText}][，{light}][，{color}][，{material}]。\n{#each segments}{start}-{end}秒：{shotSize}，{angle}，{moveText}。{action}。[{dialogueText}]\n{/each}[声音：{sfx}。][{musicText}。][{subtitleText}。][{keepText}。]"
+  "body": "{#each assets}{label}：{role}[；保留{keep}][；不取{exclude}]。\n{/each}[{purpose}：]{subjectText}[，{environment}][，{styleText}][，{light}][，{color}][，{material}]。\n{#each segments}{start}-{end}秒：{shotSize}，{angle}，{moveText}[，{focus}][，{playback}]。{action}。[画面出现文字“{textContent}”[，位于{textPosition}][，{textStyle}]。][音效：{sfx}。][{dialogueText}]\n{/each}[声音：{sfx}。][{musicText}。][{subtitleText}。][{keepText}。]"
 }
 ```
 
@@ -212,11 +237,14 @@ Oct 17, 2026 · @Ecol
 - 必填字段为空：主体、动作（视频）、至少一个分段（视频）
 - 编译结果里出现重复短语（例如光线和风格卡都写了“柔和顶光”）
 
+- 视频镜头未设置画幅比例（`params.ratio`）时提示（ℹ）。
+- 分段动作里提到“字幕 / 文字 / 字样 / 标语 / 书法字 / 标题”，但该分段没有填写画面文字内容时提示（⚠）。
+
 **阶段 4 实现说明**（`src/ui/validate.ts`、`src/ui/versions.ts`，均为纯函数，不改编译引擎）
 
 - 提示分两级：⚠ 需要处理（引用缺失、主体为空、缺分段/缺动作、空档、重叠、起点不为 0、总长不一致）；ℹ 建议（分段超过 5 秒、台词指向不存在的分段、重复短语）。显示在预览区参数行下方，镜头列表用角标显示数量。
 - “一个分段写了多个运镜”：数据模型每个分段只有一个运镜类型字段，结构上不会出现，不另做检查。
-- 重复短语：把第一个同类型平台的编译结果按 。，；！？：和换行切成短语，长度 ≥ 4 字且在全文出现两次及以上的报告（含嵌在别的短语里的情况，只报最长的那个）。
+- 重复短语：把第一个同类型平台的编译结果按 。，；！？：和换行切成短语，长度 ≥ 4 字且在全文出现两次及以上的报告（含嵌在别的短语里的情况，只报最长的那个）。纯时间戳（如“0-3秒”）和词表标准取值（如“浅景深背景虚化”在多个分段出现）不算重复。
 - 快照：镜头状态从非“定稿”变为“定稿”时保存一个版本，内容为镜头、它引用的档案卡与素材的深拷贝，以及当时编译到所有同类型平台的提示词；版本号递增。一直处于“定稿”时的后续编辑不重复保存，需要新版本时先改回“待审”再设“定稿”。
 - 版本存在项目的 `versions` 字段（按镜头 id 分组），随本地自动保存和项目 JSON 导出、导入一起保留；删除镜头时清掉它的版本。
 - 版本对比：预览区“版本（n）”按钮打开，任选两个版本（或“当前编辑内容”）和平台，按句做最长公共子序列对比：删除的句子红色划线，新增的句子绿色。
@@ -337,5 +365,9 @@ v1 不在应用内调用 LLM。用户把下面的提示词连同剧本贴进任�
 1. 校验提示（引用缺失、时间轴不连续或重叠、分段超过 5 秒、必填字段为空、重复短语）。只提示，不阻止编译。
 2. 镜头状态切换为“定稿”时保存快照；可选两个版本，逐句对比提示词差异。
 ```
+
+### 实测修复（茶叶蛋脚本，阶段 4 之后）
+
+用真实脚本（10 秒国风礼盒茶叶蛋）跑通全流程后发现并修复：画面文字无处可写且与“不要字幕”矛盾；脚本写明的 9:16 在拆解格式里无处可放；分段音效被压成一句；旁白被写成“旁白台词”；词表缺变焦、景深、升格；时间戳误报重复。对应改动：数据模型（分段可选字段）、编译引擎（分段新字段、旁白措辞选择、字幕措辞切换）、Seedance 模板、词表（`move.type` 新增 变焦推近/变焦拉远，新增 `focus`、`playback`）、拆解提示词（新字段、`params.ratio`、不编造原文没有的场景）、校验。示例项目编译结果不变（T1–T5 逐字通过）。测试：`tests/fixes-teaegg.test.ts`。
 
 **出问题时的原则**：编译结果措辞不对，先改 `templates/` 和 `vocab/` 里的数据文件；只有数据改不了的问题才改代码。新增平台时，先在《七段母版 v2.0》里确认该平台的编译顺序，再写新的模板文件。

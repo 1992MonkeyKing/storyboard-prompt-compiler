@@ -145,6 +145,7 @@ export function checkVocabValues(shots: unknown[]): VocabWarning[] {
         const slots: [string, VocabSlot][] = [
           ['shotSize', { vocabPath: 'shotSize', label: `${tag}·景别` }],
           ['angle', { vocabPath: 'angle', label: `${tag}·角度` }],
+          ['playback', { vocabPath: 'playback', label: `${tag}·播放速度` }],
         ];
         for (const [key, slot] of slots) {
           checkSlot(g[key], slot, warnings, { ...base, fieldLabel: slot.label, path: ['segments', j, key] });
@@ -228,7 +229,20 @@ function normalizeSegment(raw: unknown): Segment {
       direction: s((g.move as Record<string, unknown>)?.direction, ''),
     },
     action: s(g.action, ''),
+    focus: s(g.focus, ''),
+    playback: s(g.playback, ''),
+    sfx: s(g.sfx, ''),
+    text: normalizeText(g.text),
   };
+}
+
+/** 画面文字：对象 {content, position, style}，也接受直接给字符串（视为内容）。 */
+function normalizeText(raw: unknown): { content: string; position: string; style: string } | null {
+  if (typeof raw === 'string') return raw.trim() ? { content: raw, position: '', style: '' } : null;
+  if (raw == null || typeof raw !== 'object') return null;
+  const t = raw as Record<string, unknown>;
+  const text = { content: s(t.content, ''), position: s(t.position, ''), style: s(t.style, '') };
+  return text.content || text.position || text.style ? text : null;
 }
 
 function normalizeDialogue(raw: unknown): DialogueLine {
@@ -276,11 +290,7 @@ export function normalizeShot(raw: unknown): Shot {
     shot.color = s(g.color, '');
     shot.material = s(g.material, '');
     shot.style = s(g.style, '');
-    const t = g.text as Record<string, unknown> | undefined;
-    shot.text =
-      t != null && typeof t === 'object'
-        ? { content: s(t.content, ''), position: s(t.position, ''), style: s(t.style, '') }
-        : null;
+    shot.text = normalizeText(g.text);
   }
   return shot as unknown as Shot;
 }
